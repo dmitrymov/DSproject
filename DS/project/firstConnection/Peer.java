@@ -1,4 +1,5 @@
-package firstTest;
+package firstConnection;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -10,6 +11,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.swing.JTextArea;
 
 import net.jxta.discovery.DiscoveryEvent;
 import net.jxta.discovery.DiscoveryListener;
@@ -37,24 +40,24 @@ import net.jxta.protocol.ModuleImplAdvertisement;
 import net.jxta.protocol.ModuleSpecAdvertisement;
 import net.jxta.protocol.PipeAdvertisement;
 
-public class Hello implements DiscoveryListener, PipeMsgListener {
+public class Peer implements DiscoveryListener, PipeMsgListener {
 
-    // When developing you should handle these exceptions, I don't to lessen the clutter of start()
-    public static void main(String[] args) throws PeerGroupException, IOException {
-
-        // JXTA logs a lot, you can configure it setting level here
-        Logger.getLogger("net.jxta").setLevel(Level.ALL);
-
-
-        // Randomize a port to use with a number over 1000 (for non root on unix)
-        // JXTA uses TCP for incoming connections which will conflict if more than
-        // one Hello runs at the same time on one computer.
-        int port = 9000 + new Random().nextInt(100);
-
-        Hello hello = new Hello(port);
-        hello.start(); 
-        hello.fetch_advertisements();
-    }
+//  // When developing you should handle these exceptions, I don't to lessen the clutter of start()
+//  public static void main(String[] args) throws PeerGroupException, IOException {
+//
+//      // JXTA logs a lot, you can configure it setting level here
+//      Logger.getLogger("net.jxta").setLevel(Level.ALL);
+//
+//
+//      // Randomize a port to use with a number over 1000 (for non root on unix)
+//      // JXTA uses TCP for incoming connections which will conflict if more than
+//      // one Hello runs at the same time on one computer.
+//      int port = 9000 + new Random().nextInt(100);
+//
+//      Peer hello = new Peer(port , "");
+//      hello.start(); 
+//      hello.fetch_advertisements();
+//  }
 
 
     private String peer_name;
@@ -62,7 +65,9 @@ public class Hello implements DiscoveryListener, PipeMsgListener {
     private File conf;
     private NetworkManager manager;
 
-    public Hello(int port) {
+    public Peer(int port , String name, JTextArea textArea) {
+    	this.name = name;
+    	this.textArea = textArea;
         // Add a random number to make it easier to identify by name, will also make sure the ID is unique 
         peer_name = "Peer " + new Random().nextInt(1000000); 
 
@@ -117,6 +122,10 @@ public class Hello implements DiscoveryListener, PipeMsgListener {
     private PipeID service_id;
     private DiscoveryService discovery;
     private ModuleSpecAdvertisement mdadv;
+    
+    
+    private static String name ;
+    private JTextArea textArea;
 
     public void start() throws PeerGroupException, IOException {
         // Launch the missiles, if you have logging on and see no exceptions
@@ -197,7 +206,7 @@ public class Hello implements DiscoveryListener, PipeMsgListener {
             adv.setType(PipeService.PropagateType); 
         else 
             adv.setType(PipeService.UnicastType); 
-        adv.setName("Anton");
+        adv.setName(name);
         adv.setDescription("does not really matter");
         return adv;
     }
@@ -206,7 +215,7 @@ public class Hello implements DiscoveryListener, PipeMsgListener {
         // Found another peer! Let's say hello shall we!
         // Reformatting to create a real peer id string
         String found_peer_id = "urn:jxta:" + event.getSource().toString().substring(7);
-        send_to_peer("Hello", found_peer_id);
+        send_to_peer("Hello from " + name , found_peer_id);
     }
 
 
@@ -266,7 +275,14 @@ public class Hello implements DiscoveryListener, PipeMsgListener {
             byte[] fromBytes = msg.getMessageElement("From").getBytes(true); 
             String from = new String(fromBytes);
             String message = new String(msgBytes);
-            System.out.println(message + " says " + from);
+            
+            if( !message.startsWith("Resived by") )
+            {
+            	send_to_peer("Resived by " + name , msg.getMessageElement("From").toString());
+            }
+            
+            System.out.println(message );
+            this.textArea.setText(this.textArea.getText() +"\n"+message);
         }
         catch (Exception e) {
             // You will notice that JXTA is not very specific with exceptions...
@@ -277,7 +293,7 @@ public class Hello implements DiscoveryListener, PipeMsgListener {
     /**
      * We will not find anyone if we are not regularly looking
      */
-    private void fetch_advertisements() {
+    public void fetch_advertisements() {
       new Thread("fetch advertisements thread") {
          public void run() {
             while(true) {
