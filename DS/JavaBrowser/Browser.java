@@ -1,93 +1,113 @@
-import javax.swing.*;
-import java.io.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.*;
 import java.net.*;
+import java.io.*;
 
-public class Browser extends JFrame {
+import javax.swing.*;
+import javax.swing.event.*;
 
-    /**
-     * 
-     */
-    private static final long serialVersionUID = 1L;
+public class Browser{
+	public static void main(String [] args){
+		JFrame frame = new EditorPaneFrame();
+		frame.show();
+	}
+}
 
-    public JPanel
-        address_panel, window_panel;
-
-    public JLabel
-        address_label;
-
-    public JTextField
-        address_tf;
-
-    public JEditorPane
-        window_pane;
-
-    public JScrollPane
-        window_scroll;
-
-    public JButton
-        address_b;
-
-    private Go go = new Go();
-
-    public Browser() throws IOException {
-
-        // Define address bar
-        address_label = new JLabel(" address: ", SwingConstants.CENTER);
-        address_tf = new JTextField("http://my.jce.ac.il/~arikgi/Web/");
-        address_tf.addActionListener(go);
-        address_b = new JButton("Go");
-        address_b.addActionListener(go);
-
-        window_pane = new JEditorPane("http://my.jce.ac.il/~arikgi/Web/");
-        window_pane.setContentType("text/html");
-        window_pane.setEditable(false);
-
-        address_panel = new JPanel(new BorderLayout());
-        window_panel = new JPanel(new BorderLayout());
-
-        address_panel.add(address_label, BorderLayout.WEST);
-        address_panel.add(address_tf, BorderLayout.CENTER);
-        address_panel.add(address_b, BorderLayout.EAST);
-
-        window_scroll = new JScrollPane(window_pane);
-        window_panel.add(window_scroll);
-
-        Container pane = getContentPane();
-        pane.setLayout(new BorderLayout());
-
-        pane.add(address_panel, BorderLayout.NORTH);
-        pane.add(window_panel, BorderLayout.CENTER);
-
-        setTitle("web browser");
-        setSize(800,600);
-        setVisible(true);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-    }
-
-    public class Go implements ActionListener{
-
-        public void actionPerformed(ActionEvent ae){
-
-            try {
-
-                window_pane.setPage(address_tf.getText());
-
-            } catch (MalformedURLException e) {     // new URL() failed
-                window_pane.setText("MalformedURLException: " + e);
-            } catch (IOException e) {               // openConnection() failed
-                window_pane.setText("IOException: " + e);
-            }
-
-        }
-
-    }
-
-    public static void main(String args[]) throws IOException {
-        @SuppressWarnings("unused")
-        Browser wb = new Browser();
-    }
-
+class EditorPaneFrame extends JFrame{
+	
+	private JTextField url;
+	private JCheckBox editable;
+	private JButton loadButton;
+	private JButton backButton;
+	private JEditorPane editorPane;
+	private Stack urlStack = new Stack();
+	
+	public EditorPaneFrame(){
+		setTitle("Java Web Browser");
+		setSize(800,600);
+		addWindowListener(new WindowAdapter(){
+				public void windowClosing(WindowEvent e){
+					System.exit(0);
+				}
+			} );
+		
+		// set up text field and load button for typing in URL
+		url = new JTextField(30);
+		loadButton = new JButton("Load");
+		loadButton.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent event){
+				try{
+					// remember URL for back button
+					urlStack.push(url.getText());
+					editorPane.setPage(url.getText());
+				}
+				catch(Exception e)
+				{
+					editorPane.setText("Error: " +e);
+				}
+			}
+			});
+		// set up back button and button action
+		backButton = new JButton("Back");
+		backButton.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent event){
+				if(urlStack.size()<=1) return;
+				try
+				{
+					urlStack.pop();
+					String urlString = (String)urlStack.peek();
+					url.setText(urlString);
+					editorPane.setPage(urlString);
+				}
+				catch(IOException e)
+				{
+					editorPane.setText("Error : " +e);
+				}
+			}
+			});
+		
+		editorPane = new JEditorPane();
+		editorPane.setEditable(false);
+		editorPane.addHyperlinkListener(new HyperlinkListener(){
+			public void hyperlinkUpdate(HyperlinkEvent event){
+				if(event.getEventType() == HyperlinkEvent.EventType.ACTIVATED){
+					try
+					{
+						urlStack.push(event.getURL().toString());
+						url.setText(event.getURL().toString());
+						editorPane.setPage(event.getURL());
+					}
+					catch(IOException e)
+					{
+						editorPane.setText("Error: " + e);
+					}
+				}
+			}
+			});
+		urlStack.push("http://my.jce.ac.il/~arikgi/Web/");
+		try {
+			editorPane.setPage("http://my.jce.ac.il/~arikgi/Web/");
+		} catch (IOException e1) {
+		}
+		
+		editable = new JCheckBox();
+		editable.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent event){
+				editorPane.setEditable(editable.isSelected());
+			}
+			});
+		
+		Container contentPane = getContentPane();
+		contentPane.add(new JScrollPane(editorPane), "Center");
+		JPanel panel = new JPanel();
+		panel.add(new JLabel("URL"));
+		panel.add(url);
+		panel.add(loadButton);
+		panel.add(backButton);
+		panel.add(new JLabel("Editable"));
+		panel.add(editable);
+		contentPane.add(panel,"North");
+	}
+	
 }
